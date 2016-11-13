@@ -6,6 +6,7 @@ import String exposing (toInt, toList, fromList)
 import Char exposing (toLower)
 import List exposing (head, length, reverse, take, append, repeat)
 import Maybe exposing (map)
+import Set exposing (Set, toList, fromList, empty)
 
 main : Program Never
 main = Html.App.beginnerProgram
@@ -19,13 +20,15 @@ main = Html.App.beginnerProgram
 
 type alias Model =
     { length : Int
-    , guess : List Char
+    , secret : List Char
+    , guesses : Set Char
     , wordlist : List String
     }
 
 type Msg
     = ChangeLength String
     | ChangeLetter Int String
+    | AddGuess String
 
 
 ---------- View ----------
@@ -52,8 +55,17 @@ view model =
                 :: viewLetters model )
         , div
             []
+            [ text "Guessed letters: "
+            , input
+                [ placeholder "Enter guessed letters"
+                , onInput AddGuess
+                ]
+                []
+            ]
+        , div
+            []
             [ text "Guess: "
-            , text <| fromList model.guess
+            , text <| String.fromList model.secret
             ]
         ]
 
@@ -79,7 +91,8 @@ viewLetters model =
 model : Model
 model =
     { length = 0
-    , guess = []
+    , secret = []
+    , guesses = Set.empty
     , wordlist = [ "boat"
                  , "moat"
                  , "coat"
@@ -97,8 +110,9 @@ update msg model =
         ChangeLength s ->
             case (toInt s) of
                 Ok i ->
-                    { model | length = i
-                            , guess = repeat i '.'
+                    { model
+                        | length = i
+                        , secret = repeat i '.'
                     }
                 Err _ ->
                     model
@@ -107,13 +121,20 @@ update msg model =
                 updated = updateGuess
                               i
                               s
-                              model.guess
-
+                              model.secret
             in
-                { model | guess = updated }
+                { model | secret = updated }
+        AddGuess s ->
+            { model |
+                guesses = model.guesses
+                              |> Set.toList
+                              |> List.append (String.toList s)
+                              |> Set.fromList
+            }
+                      
 
 updateGuess : Int -> String -> List Char -> List Char
-updateGuess i chars guess =
+updateGuess i chars secret =
     let
         char = chars
                 |> String.toList
@@ -122,13 +143,13 @@ updateGuess i chars guess =
     in
         case char of
             Nothing ->
-                guess
+                secret
             Just c ->
                 let
-                    l = length guess
-                    prefix = guess
+                    l = length secret
+                    prefix = secret
                                  |> take i
-                    suffix = guess
+                    suffix = secret
                                  |> reverse
                                  |> take (l - i - 1)
                                  |> reverse
