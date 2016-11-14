@@ -1,4 +1,4 @@
-import Html.App exposing (beginnerProgram)
+import Html.App exposing (beginnerProgram, program)
 import Html exposing (Html, div, text ,input)
 import Html.Attributes exposing (placeholder, maxlength, size)
 import Html.Events exposing (onInput)
@@ -9,10 +9,11 @@ import Maybe exposing (map)
 import Set exposing (Set, toList, fromList, empty)
 
 main : Program Never
-main = Html.App.beginnerProgram
-    { model = model
+main = Html.App.program
+    { init = model ! []
     , view = view
     , update = update
+    , subscriptions = \_ -> Sub.none
     }
 
 
@@ -104,7 +105,7 @@ model =
                  ]
     }
 
-update : Msg -> Model -> Model
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         ChangeLength s ->
@@ -113,9 +114,9 @@ update msg model =
                     { model
                         | length = i
                         , secret = repeat i '.'
-                    }
+                    } ! []
                 Err _ ->
-                    model
+                    model ! []
         ChangeLetter i s ->
             let
                 updated = updateGuess
@@ -123,14 +124,14 @@ update msg model =
                               s
                               model.secret
             in
-                { model | secret = updated }
+                { model | secret = updated } ! []
         AddGuess s ->
             { model |
                 guesses = model.guesses
                               |> Set.toList
                               |> List.append (String.toList s)
                               |> Set.fromList
-            }
+            } ! []
                       
 
 updateGuess : Int -> String -> List Char -> List Char
