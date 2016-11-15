@@ -5,7 +5,7 @@ import Html.Events exposing (onInput, onClick)
 import String exposing (toInt, toList, fromList)
 import Char exposing (toLower)
 import List exposing (head, length, reverse, take, append, repeat)
-import Maybe exposing (map)
+import Maybe exposing (map, withDefault)
 import Set exposing (Set, toList, fromList, empty)
 import Debug exposing (crash, log)
 
@@ -21,7 +21,7 @@ main = Html.App.program
 ---------- Types ----------
 
 type alias Model =
-    { length : Int
+    { length : Maybe Int
     , secret : List Char
     , guesses : Set Char
     , wordlist : List String
@@ -48,6 +48,7 @@ view model =
                 , input
                     [ placeholder "Enter a number"
                     , onInput ChangeLength
+                    , value <| withDefault "" (Maybe.map toString model.length)
                     ]
                     []
                 ]
@@ -86,7 +87,11 @@ view model =
 viewLetters : Model -> List (Html Msg)
 viewLetters model =
     let
-        letters = [1..model.length]
+        letters = case model.length of
+                      Just n ->
+                          [1..n]
+                      Nothing ->
+                          []
         createLetter i =
             input
                 [ maxlength 1
@@ -103,7 +108,7 @@ viewLetters model =
 
 init : (Model, Cmd a)
 init =
-    { length = 0
+    { length = Nothing
     , secret = []
     , guesses = Set.empty
     , wordlist = [ "boat"
@@ -127,7 +132,7 @@ update msg model =
             case (toInt s) of
                 Ok i ->
                     { model
-                        | length = i
+                        | length = Just i
                         , secret = repeat i '.'
                     } ! []
                 Err _ ->
