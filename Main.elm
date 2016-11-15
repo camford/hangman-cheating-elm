@@ -1,16 +1,17 @@
 import Html.App exposing (beginnerProgram, program)
-import Html exposing (Html, div, text ,input)
-import Html.Attributes exposing (placeholder, maxlength, size)
-import Html.Events exposing (onInput)
+import Html exposing (Html, div, text ,input, br, button)
+import Html.Attributes exposing (placeholder, maxlength, size, value)
+import Html.Events exposing (onInput, onClick)
 import String exposing (toInt, toList, fromList)
 import Char exposing (toLower)
 import List exposing (head, length, reverse, take, append, repeat)
 import Maybe exposing (map)
 import Set exposing (Set, toList, fromList, empty)
+import Debug exposing (crash, log)
 
 main : Program Never
 main = Html.App.program
-    { init = model ! []
+    { init = init
     , view = view
     , update = update
     , subscriptions = \_ -> Sub.none
@@ -30,6 +31,7 @@ type Msg
     = ChangeLength String
     | ChangeLetter Int String
     | AddGuess String
+    | ResetGame
 
 
 ---------- View ----------
@@ -60,13 +62,23 @@ view model =
             , input
                 [ placeholder "Enter guessed letters"
                 , onInput AddGuess
+                , model.guesses
+                    |> Set.toList
+                    |> String.fromList
+                    |> value
                 ]
                 []
             ]
         , div
             []
-            [ text "Guess: "
-            , text <| String.fromList model.secret
+            [ button
+                [ onClick ResetGame ]
+                [ text "Reset" ]
+            ]
+        , div
+            []
+            [ br [] []
+            , text <| toString model
             ]
         ]
 
@@ -89,8 +101,8 @@ viewLetters model =
 
 ---------- State ----------
 
-model : Model
-model =
+init : (Model, Cmd a)
+init =
     { length = 0
     , secret = []
     , guesses = Set.empty
@@ -103,7 +115,10 @@ model =
                  , "falling"
                  , "calling"
                  ]
-    }
+    } ! []
+
+foo : Int -> String
+foo = \_ -> crash "sda"
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
@@ -123,15 +138,18 @@ update msg model =
                               i
                               s
                               model.secret
+                m = { model | secret = updated }
             in
-                { model | secret = updated } ! []
+                update (AddGuess s) m
         AddGuess s ->
             { model |
-                guesses = model.guesses
-                              |> Set.toList
-                              |> List.append (String.toList s)
-                              |> Set.fromList
+                guesses = s
+                           |> String.toList
+                           |> Set.fromList
+                           |> Set.union model.guesses
             } ! []
+        ResetGame ->
+            init
                       
 
 updateGuess : Int -> String -> List Char -> List Char
