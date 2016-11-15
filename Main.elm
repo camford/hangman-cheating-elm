@@ -3,10 +3,11 @@ import Html exposing (Html, div, text ,input, br, button)
 import Html.Attributes exposing (placeholder, maxlength, size, value)
 import Html.Events exposing (onInput, onClick)
 import String exposing (toInt, toList, fromList)
-import Char exposing (toLower)
-import List exposing (head, length, reverse, take, append, repeat)
+import Char exposing (toLower, isLower)
+import List exposing (head, length, reverse, take, drop, append, repeat, filter)
 import Maybe exposing (map, withDefault)
 import Set exposing (Set, toList, fromList, empty)
+import Maybe.Extra exposing (combine)
 import Debug exposing (crash, log)
 
 main : Program Never
@@ -22,7 +23,7 @@ main = Html.App.program
 
 type alias Model =
     { length : Maybe Int
-    , secret : List Char
+    , secret : List (Maybe Char)
     , guesses : Set Char
     , wordlist : List String
     }
@@ -89,14 +90,20 @@ viewLetters model =
     let
         letters = case model.length of
                       Just n ->
-                          [1..n]
+                          [0..(n-1)]
                       Nothing ->
                           []
         createLetter i =
             input
                 [ maxlength 1
                 , size 1 
-                , onInput <| ChangeLetter (i-1)
+                , onInput <| ChangeLetter i
+                , value <| withDefault "" (model.secret
+                                            |> drop i 
+                                            |> take 1
+                                            |> combine
+                                            |> Maybe.map String.fromList
+                                          )
                 ]
                 []
     in
@@ -122,8 +129,6 @@ init =
                  ]
     } ! []
 
-foo : Int -> String
-foo = \_ -> crash "sda"
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
@@ -133,7 +138,7 @@ update msg model =
                 Ok i ->
                     { model
                         | length = Just i
-                        , secret = repeat i '.'
+                        , secret = repeat i Nothing
                     } ! []
                 Err _ ->
                     model ! []
@@ -150,18 +155,22 @@ update msg model =
             { model |
                 guesses = s
                            |> String.toList
+                           |> filter isAlpha
                            |> Set.fromList
                            |> Set.union model.guesses
             } ! []
         ResetGame ->
             init
-                      
 
-updateGuess : Int -> String -> List Char -> List Char
+isAlpha : Char -> Bool
+isAlpha = isLower << toLower
+
+updateGuess : Int -> String -> List (Maybe Char) -> List (Maybe Char)
 updateGuess i chars secret =
     let
         char = chars
                 |> String.toList
+                |> filter isAlpha
                 |> List.head
                 |> Maybe.map Char.toLower
     in
@@ -178,4 +187,4 @@ updateGuess i chars secret =
                                  |> take (l - i - 1)
                                  |> reverse
                 in
-                    append prefix (c :: suffix)
+                    append prefix (Just c :: suffix)
