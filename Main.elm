@@ -21,6 +21,11 @@ main = Html.App.program
     , subscriptions = \_ -> Sub.none
     }
 
+-- TODO:
+--  - Upgrade to Elm 0.18
+--  - Speed up word matching
+--  - Add some *style*
+
 
 ---------- Types ----------
 
