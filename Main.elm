@@ -2,11 +2,11 @@ import Html.App exposing (beginnerProgram, program)
 import Html exposing (Html, div, text ,input, br, button)
 import Html.Attributes exposing (placeholder, maxlength, size, value)
 import Html.Events exposing (onInput, onClick)
-import String exposing (toInt, toList, fromList)
+import String exposing (toInt, toList, fromList, length)
 import Char exposing (toLower, isLower)
-import List exposing (head, length, reverse, take, drop, append, repeat, filter)
+import List exposing (head, length, reverse, take, drop, append, repeat, filter, all, map2)
 import Maybe exposing (map, withDefault)
-import Set exposing (Set, toList, fromList, empty)
+import Set exposing (Set, toList, fromList, empty, member)
 import Maybe.Extra exposing (combine)
 import Debug exposing (crash, log)
 
@@ -73,6 +73,11 @@ view model =
             ]
         , div
             []
+            [ text "Possible words: "
+            , text << toString <| filter (matches model.secret model.guesses) model.wordlist
+            ]
+        , div
+            []
             [ button
                 [ onClick ResetGame ]
                 [ text "Reset" ]
@@ -83,6 +88,27 @@ view model =
             , text <| toString model
             ]
         ]
+
+zip : List a -> List b -> List (a, b)
+zip = map2 (\x y -> (x,y))
+
+matches : List (Maybe Char) -> Set Char -> String -> Bool
+matches secret guesses word =
+    let
+        pairs = zip secret (String.toList word)
+        match : (Maybe Char, Char) -> Bool
+        match (a, b) =
+            case a of
+                -- if we don't know the letter yet
+                Nothing ->
+                    -- then the letter can't be something we already guessed
+                    not <| member b guesses
+                -- otherwise if we know the letter
+                Just c ->
+                    -- the word's corresponding letter should match
+                    c == b
+    in
+        ((String.length word) == (List.length secret)) && (all match pairs)
 
 
 viewLetters : Model -> List (Html Msg)
@@ -113,20 +139,23 @@ viewLetters model =
 
 ---------- State ----------
 
+badDict : List String
+badDict = [ "boat"
+          , "moat"
+          , "coat"
+          , "card"
+          , "railing"
+          , "failing"
+          , "falling"
+          , "calling"
+          ]
+
 init : (Model, Cmd a)
 init =
     { length = Nothing
     , secret = []
     , guesses = Set.empty
-    , wordlist = [ "boat"
-                 , "moat"
-                 , "coat"
-                 , "card"
-                 , "railing"
-                 , "failing"
-                 , "falling"
-                 , "calling"
-                 ]
+    , wordlist = badDict
     } ! []
 
 
@@ -179,7 +208,7 @@ updateGuess i chars secret =
                 secret
             Just c ->
                 let
-                    l = length secret
+                    l = List.length secret
                     prefix = secret
                                  |> take i
                     suffix = secret
