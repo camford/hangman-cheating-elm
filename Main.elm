@@ -7,6 +7,9 @@ import Char exposing (toLower, isLower)
 import List exposing (head, length, reverse, take, drop, append, repeat, filter, all, map2)
 import Maybe exposing (map, withDefault)
 import Set exposing (Set, toList, fromList, empty, member)
+import Http exposing (Error, get)
+import Task exposing (perform)
+import Json.Decode exposing (Decoder, string, list)
 import Maybe.Extra exposing (combine)
 import Debug exposing (crash, log)
 
@@ -33,6 +36,8 @@ type Msg
     | ChangeLetter Int String
     | AddGuess String
     | ResetGame
+    | FetchSucceed (List String)
+    | FetchFail Http.Error
 
 
 ---------- View ----------
@@ -106,7 +111,7 @@ matches secret guesses word =
                 -- otherwise if we know the letter
                 Just c ->
                     -- the word's corresponding letter should match
-                    c == b
+                    (toLower c) == (toLower b)
     in
         ((String.length word) == (List.length secret)) && (all match pairs)
 
@@ -150,13 +155,13 @@ badDict = [ "boat"
           , "calling"
           ]
 
-init : (Model, Cmd a)
+init : (Model, Cmd Msg)
 init =
     { length = Nothing
     , secret = []
     , guesses = Set.empty
     , wordlist = badDict
-    } ! []
+    } ! [fetchDictionary]
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -190,6 +195,10 @@ update msg model =
             } ! []
         ResetGame ->
             init
+        FetchFail err ->
+            model ! []
+        FetchSucceed words ->
+            { model | wordlist = words } ! []
 
 isAlpha : Char -> Bool
 isAlpha = isLower << toLower
@@ -217,3 +226,16 @@ updateGuess i chars secret =
                                  |> reverse
                 in
                     append prefix (Just c :: suffix)
+
+
+---------- Effects ----------
+
+dictUrl : String
+dictUrl = "https://raw.githubusercontent.com/jacksonrayhamilton/wordlist-english/master/english-words.json"
+-- dictUrl = "https://users.cs.duke.edu/~ola/ap/linuxwords" -- old non-JSON url
+
+fetchDictionary : Cmd Msg
+fetchDictionary = Task.perform FetchFail FetchSucceed (Http.get decodeDict dictUrl)
+
+decodeDict : Decoder (List String)
+decodeDict = (list string)
