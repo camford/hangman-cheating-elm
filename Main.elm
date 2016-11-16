@@ -6,7 +6,7 @@ import String exposing (toInt, toList, fromList, length)
 import Char exposing (toLower, isLower)
 import List exposing (head, length, reverse, take, drop, append, repeat, filter, all, map2)
 import Maybe exposing (map, withDefault)
-import Set exposing (Set, toList, fromList, empty, member)
+import Set exposing (Set, toList, fromList, empty, member, union)
 import Http exposing (Error, get)
 import Task exposing (perform)
 import Json.Decode exposing (Decoder, string, list)
@@ -53,21 +53,17 @@ view model =
         []
         [ div
             []
-            [ div
-                []
-                [ text "What's the length of the word? "
-                , input
-                    [ placeholder "Enter a number"
-                    , onInput ChangeLength
-                    , value <| withDefault "" (Maybe.map toString model.length)
-                    ]
-                    []
+            [ text "What's the length of the word? "
+            , input
+                [ placeholder "Enter a number"
+                , onInput ChangeLength
+                , value <| withDefault "" <| Maybe.map toString model.length
                 ]
+                []
             ]
         , div
             []
-            ( text "Partial Solution: "
-                :: viewLetters model )
+            ( text "Partial Solution: " :: viewLetters model )
         , div
             []
             [ text "Guessed letters: "
@@ -98,6 +94,7 @@ view model =
             , text <| toString model
             ]
         ]
+        
 
 zip : List a -> List b -> List (a, b)
 zip = map2 (\x y -> (x,y))
@@ -129,43 +126,27 @@ viewLetters model =
                           [0..(n-1)]
                       Nothing ->
                           []
-        createLetter i =
+        viewLetter i =
             input
                 [ maxlength 1
                 , size 1 
                 , onInput <| ChangeLetter i
-                , value <| withDefault "" (model.secret
-                                            |> drop i 
-                                            |> take 1
-                                            |> combine
-                                            |> Maybe.map String.fromList
-                                          )
                 ]
                 []
     in
-        List.map createLetter letters
+        List.map viewLetter letters
 
     
 
 ---------- State ----------
 
-badDict : List String
-badDict = [ "boat"
-          , "moat"
-          , "coat"
-          , "card"
-          , "railing"
-          , "failing"
-          , "falling"
-          , "calling"
-          ]
 
 init : (Model, Cmd Msg)
 init =
     { length = Nothing
     , secret = []
     , guesses = Set.empty
-    , wordlist = badDict
+    , wordlist = []
     } ! [fetchDictionary]
 
 
@@ -211,26 +192,20 @@ isAlpha = isLower << toLower
 updateGuess : Int -> String -> List (Maybe Char) -> List (Maybe Char)
 updateGuess i chars secret =
     let
-        char = chars
+        c = chars
                 |> String.toList
                 |> filter isAlpha
                 |> List.head
                 |> Maybe.map Char.toLower
+        l = List.length secret
+        prefix = secret
+                     |> take i
+        suffix = secret
+                     |> reverse
+                     |> take (l - i - 1)
+                     |> reverse
     in
-        case char of
-            Nothing ->
-                secret
-            Just c ->
-                let
-                    l = List.length secret
-                    prefix = secret
-                                 |> take i
-                    suffix = secret
-                                 |> reverse
-                                 |> take (l - i - 1)
-                                 |> reverse
-                in
-                    append prefix (Just c :: suffix)
+        append prefix (c :: suffix)
 
 
 ---------- Effects ----------
